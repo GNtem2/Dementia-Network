@@ -1,0 +1,108 @@
+---
+title: "index"
+author: "gntem2"
+date: "20/05/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r pubmedwordcloud}
+library(PubMedWordcloud)
+pmid1<-getPMIDsByKeyWords(keys="dementia", dFrom = 2018, dTo=2019)
+#save(pmid1,file="pmid1.Rda")
+#load("pmid1.Rda")
+Abstracts=getAbstracts(pmid1)
+cleanAbs=cleanAbstracts(Abstracts)
+plotWordCloud(cleanAbs,min.freq = 10, scale = c(2, 0.3))
+
+
+```
+
+
+```{r stem cell}
+library(pubmed.mineR)
+library(lsa)
+library(SnowballC)
+library(wordcloud)
+library(DT)
+
+#save pubmed search as summary
+#dementia
+#abstracts=readabs("pubmed_result.txt") 
+abstracts=readabs("pubmed_result2.txt") #9/12/19
+
+pmids=abstracts@PMID
+gene=gene_atomization(abstracts)
+#summary(gene)
+
+words=word_atomizations(abstracts)
+#plot wordcloud
+
+
+abstract.bodies=abstracts@Abstract
+#SentenceToken(abstract.bodies[1])
+Myelin=searchabsL(abstracts)
+Con=Find_conclusion(abstracts) #conclusion of abstracts
+
+#create list of words
+tdm_wordsA=c("human","dementia","alzheimer", "frontotemporal","cognition", "behaviour",  "human computer inferface","aging") 
+
+#create list of gene
+#take gene data from first column
+tdm_wordsG=gene[,1] 
+
+#merge the 2 word lists
+tdm_wordsAG=c(tdm_wordsA,tdm_wordsG)
+
+#create term document matrix
+tdmAG=tdm_for_lsa(Myelin,tdm_wordsAG)
+
+#plot wordcloud
+m <- as.matrix(tdmAG)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+
+
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+barplot(d[1:20,]$freq, las = 2, names.arg = d[1:20,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+
+
+## latent semantic analysis
+lsaspace=lsa(tdmAG,dims=dimcalc_share());
+newmatrix=as.textmatrix(lsaspace)
+associated_words=lapply(tdm_wordsAG,function(x){associate(newmatrix,x,measure="cosine",threshold="0.5")})
+names(associated_words)=tdm_wordsAG
+associated_words[1:10]
+cos_sim_calc(tdmAG) #output file cosimdata.txt #cytoscape
+cos=read.table("cossimdata.txt",header=FALSE,sep="\t")
+#write.csv(cos, "cossimdata.csv")
+```
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
